@@ -21,27 +21,33 @@ namespace allping
         public Form1()
         {
             InitializeComponent();
+            // 添加TextChanged事件处理
+            importIPtextBox1.TextChanged += ImportIPtextBox1_TextChanged;
         }
 
-        private void importIP_Click(object sender, EventArgs e)
+        private void ImportIPtextBox1_TextChanged(object sender, EventArgs e)
         {
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-                openFileDialog.FilterIndex = 1;
+            string text = importIPtextBox1.Text;
+            
+            // 使用正则表达式匹配所有的URL模式
+            string pattern = @"(https?://[\d\.:]+)";
+            string[] urls = Regex.Split(text, pattern)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .ToArray();
 
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
+            // 重新组合文本，确保每个URL独占一行
+            string processedText = string.Join(Environment.NewLine, 
+                urls.Where(s => s.StartsWith("http://") || s.StartsWith("https://")));
+
+            // 如果处理后的文本与当前文本不同，则更新文本框
+            if (processedText != text)
+            {
+                int selectionStart = importIPtextBox1.SelectionStart;
+                importIPtextBox1.Text = processedText;
+                if (selectionStart <= processedText.Length)
                 {
-                    try
-                    {
-                        string[] lines = File.ReadAllLines(openFileDialog.FileName);
-                        importIPtextBox1.Text = string.Join(Environment.NewLine, lines);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("读取文件时发生错误: " + ex.Message, "错误", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    importIPtextBox1.SelectionStart = selectionStart;
                 }
             }
         }
@@ -270,6 +276,29 @@ namespace allping
                     catch (Exception ex)
                     {
                         MessageBox.Show($"保存文件时发生错误: {ex.Message}", "错误", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void importIP_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+                openFileDialog.FilterIndex = 1;
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        string[] lines = File.ReadAllLines(openFileDialog.FileName);
+                        importIPtextBox1.Text = string.Join(Environment.NewLine, lines);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("读取文件时发生错误: " + ex.Message, "错误", 
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
