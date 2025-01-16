@@ -95,18 +95,20 @@ namespace allping
                 foreach (string line in originalLines)
                 {
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
-                    {
                         return;
-                    }
 
-                    var match = Regex.Match(line.Trim(), @"\b(?:\d{1,3}\.){3}\d{1,3}\b");
+                    string trimmedLine = line.Trim();
+                    // 首先尝试提取URL或IP地址部分，去除后面的ping结果
+                    string urlOrIp = trimmedLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    
+                    var match = Regex.Match(urlOrIp, @"\b(?:\d{1,3}\.){3}\d{1,3}\b");
                     if (match.Success)
                     {
-                        originalToIP[line.Trim()] = match.Value;
+                        originalToIP[trimmedLine] = match.Value;
                     }
                     else
                     {
-                        originalToIP[line.Trim()] = line.Trim();
+                        originalToIP[trimmedLine] = urlOrIp;
                     }
                 }
 
@@ -117,13 +119,16 @@ namespace allping
                         return;
                     }
 
-                    string ip = originalToIP[originalLine.Trim()];
+                    string trimmedLine = originalLine.Trim();
+                    string urlOrIp = trimmedLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    string ip = originalToIP[trimmedLine];
                     try
                     {
                         long minRoundtripTime = long.MaxValue;
                         bool hasSuccessfulPing = false;
-                        string pingStatus = "超时";
+                        string pingStatus = "timeout";
                         int timeoutCount = 0;
+                        int lastSuccessfulTtl = 0;
 
                         Pinglog.AppendText($"正在 Ping {ip} ...\r\n");
                         Pinglog.Update();
@@ -142,7 +147,8 @@ namespace allping
                                 {
                                     hasSuccessfulPing = true;
                                     minRoundtripTime = Math.Min(minRoundtripTime, reply.RoundtripTime);
-                                    Pinglog.AppendText($"来自 {ip} 的回复: 时间={reply.RoundtripTime}ms TTL={reply.Options?.Ttl ?? 0}\r\n");
+                                    lastSuccessfulTtl = reply.Options?.Ttl ?? 0;
+                                    Pinglog.AppendText($"来自 {ip} 的回复: 时间={reply.RoundtripTime}ms TTL={lastSuccessfulTtl}\r\n");
                                 }
                                 else
                                 {
@@ -160,38 +166,26 @@ namespace allping
 
                         if (hasSuccessfulPing)
                         {
-                            pingStatus = $"{minRoundtripTime}ms";
+                            pingStatus = $"{minRoundtripTime.ToString().PadLeft(1)}ms TTL={lastSuccessfulTtl}";
                         }
                         else
                         {
-                            pingStatus = "超时";
+                            pingStatus = $"{" ".PadLeft(1)}timeout";
                         }
 
-                        // 确保状态显示的宽度一致，无论是"超时"还是"XXXms"
-                        if (pingStatus == "超时")
-                        {
-                            pingStatus = pingStatus.PadRight(16, ' ');  // 使用空格填充到16个字符
-                        }
-                        else
-                        {
-                            pingStatus = pingStatus.PadRight(16);
-                        }
+                        pingStatus = pingStatus.PadRight(15);
 
-                        string result = $"{originalLine.PadRight(30)}    {pingStatus}超时次数:{timeoutCount.ToString().PadLeft(1)}";
+                        string result = $"{urlOrIp.PadRight(30)}    {pingStatus}超时次数:{timeoutCount}";
                         AllpingtextBox1.AppendText(result + Environment.NewLine);
-                        AllpingtextBox1.SelectionStart = AllpingtextBox1.Text.Length;
                         AllpingtextBox1.ScrollToCaret();
 
-                        Pinglog.AppendText($"\r\n");
+                        Pinglog.AppendText("\r\n");
                         Pinglog.Update();
                     }
                     catch (Exception ex)
                     {
-                        string result = $"{originalLine.PadRight(30)}    错误: {ex.Message.PadRight(18)}超时次数:3";
+                        string result = $"{urlOrIp.PadRight(30)}    错误: {ex.Message.PadRight(18)}超时次数:3";
                         AllpingtextBox1.AppendText(result + Environment.NewLine);
-                        AllpingtextBox1.SelectionStart = AllpingtextBox1.Text.Length;
-                        AllpingtextBox1.ScrollToCaret();
-
                         Pinglog.AppendText($"Ping {ip} 时发生错误: {ex.Message}\r\n\r\n");
                         Pinglog.Update();
                     }
