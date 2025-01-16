@@ -173,9 +173,10 @@ namespace allping
                             pingStatus = $"{" ".PadLeft(1)}timeout";
                         }
 
-                        pingStatus = pingStatus.PadRight(15);
-
-                        string result = $"{urlOrIp.PadRight(30)}    {pingStatus}超时次数:{timeoutCount}";
+                        string result = string.Format("{0,-40}{1,-25}超时次数:{2}",
+                            urlOrIp,
+                            pingStatus,
+                            timeoutCount);
                         AllpingtextBox1.AppendText(result + Environment.NewLine);
                         AllpingtextBox1.ScrollToCaret();
 
@@ -184,7 +185,7 @@ namespace allping
                     }
                     catch (Exception ex)
                     {
-                        string result = $"{urlOrIp.PadRight(30)}    错误: {ex.Message.PadRight(18)}超时次数:3";
+                        string result = $"{urlOrIp}\t\t错误: {ex.Message}\t超时次数:3";
                         AllpingtextBox1.AppendText(result + Environment.NewLine);
                         Pinglog.AppendText($"Ping {ip} 时发生错误: {ex.Message}\r\n\r\n");
                         Pinglog.Update();
