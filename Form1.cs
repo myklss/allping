@@ -166,17 +166,17 @@ namespace allping
 
                         if (hasSuccessfulPing)
                         {
-                            pingStatus = $"{minRoundtripTime.ToString().PadLeft(1)}ms TTL={lastSuccessfulTtl}";
+                            pingStatus = $"{minRoundtripTime}ms TTL={lastSuccessfulTtl}";
                         }
                         else
                         {
-                            pingStatus = $"{" ".PadLeft(1)}timeout";
+                            pingStatus = "timeout";
                         }
 
-                        string result = string.Format("{0,-40}{1,-25}超时次数:{2}",
+                        string result = string.Format("{0," + (-32) + "}{1," + (-15) + "}超时次数:{2}",
                             urlOrIp,
                             pingStatus,
-                            timeoutCount);
+                            timeoutCount).Replace("\t", "    ");
                         AllpingtextBox1.AppendText(result + Environment.NewLine);
                         AllpingtextBox1.ScrollToCaret();
 
@@ -240,7 +240,30 @@ namespace allping
                 {
                     try
                     {
-                        File.WriteAllText(saveFileDialog.FileName, AllpingtextBox1.Text);
+                        var lines = AllpingtextBox1.Lines;
+                        var processedLines = new List<string>();
+                        
+                        foreach (var line in lines)
+                        {
+                            var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length >= 3)
+                            {
+                                string url = parts[0];
+                                string ms = parts[1];  // 获取ms部分
+                                string ttl = parts[2];  // 获取TTL部分
+                                string timeout = parts[3];  // 获取超时次数部分
+                                
+                                // 使用固定宽度和空格数量重新格式化
+                                string formattedLine = $"{url.PadRight(32)}{ms.PadRight(10)}{ttl.PadRight(10)}{timeout}";
+                                processedLines.Add(formattedLine);
+                            }
+                            else
+                            {
+                                processedLines.Add(line);
+                            }
+                        }
+
+                        File.WriteAllLines(saveFileDialog.FileName, processedLines);
                         MessageBox.Show("保存成功！", "提示", 
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
